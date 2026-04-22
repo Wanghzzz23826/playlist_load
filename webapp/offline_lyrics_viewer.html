@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline Lyrics Viewer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --nav: #071a2f;
+      --nav-2: #0b2440;
+      --nav-line: #173653;
+      --nav-text: #f7efe0;
+      --nav-muted: #b9c7cf;
+      --paper: #f6efdf;
+      --paper-2: #fbf6ea;
+      --ink: #18202a;
+      --muted: #66717d;
+      --rule: #cfbfa4;
+      --accent: #a67843;
+      --danger: #b5483a;
+      --ui-font: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --lyrics-font: "Lora", Georgia, "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--ui-font);
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(300px, 410px) minmax(0, 1fr);
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .sidebar {
+      min-width: 0;
+      min-height: 0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--nav), var(--nav-2));
+      color: var(--nav-text);
+      border-right: 1px solid var(--nav-line);
+    }
+
+    .playlist-head {
+      flex: 0 0 auto;
+      padding: 18px;
+      border-bottom: 1px solid var(--nav-line);
+    }
+
+    .playlist-title {
+      margin: 0 0 14px;
+      overflow-wrap: anywhere;
+      font-size: 20px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .field-label {
+      display: block;
+      margin: 12px 0 6px;
+      color: var(--nav-muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    .field,
+    .select {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--nav-line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--nav-text);
+      padding: 0 11px;
+      font-family: var(--ui-font);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .select option {
+      color: var(--ink);
+      background: var(--paper-2);
+    }
+
+    .field::placeholder {
+      color: #8da0ad;
+    }
+
+    .field:focus,
+    .select:focus {
+      border-color: #d7bc88;
+    }
+
+    .import-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .track-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .track {
+      width: 100%;
+      min-height: 68px;
+      display: block;
+      text-align: left;
+      padding: 13px 18px;
+      border: 0;
+      border-bottom: 1px solid var(--nav-line);
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-family: var(--ui-font);
+      cursor: pointer;
+    }
+
+    .track:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .track.active {
+      background: rgba(246, 239, 223, 0.13);
+      border-left: 4px solid #d7bc88;
+      padding-left: 14px;
+    }
+
+    .track-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+
+    .track-artist {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 5px;
+      color: var(--nav-muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .main {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(24, 32, 42, 0.04), transparent 44px),
+        var(--paper);
+    }
+
+    .header {
+      flex: 0 0 auto;
+      padding: 22px 32px 18px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper-2);
+    }
+
+    .song-title {
+      overflow-wrap: anywhere;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .song-meta {
+      margin-top: 8px;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .lyrics {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 42px min(7vw, 90px) 110px;
+      font-family: var(--lyrics-font);
+      font-size: 30px;
+      line-height: 1.9;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    .lyrics.empty {
+      color: var(--muted);
+      font-family: var(--ui-font);
+      font-size: 18px;
+    }
+
+    .lyric-stanza {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .lyrics hr {
+      width: min(220px, 46%);
+      height: 1px;
+      margin: 34px 0;
+      border: 0;
+      background: linear-gradient(90deg, var(--rule), transparent);
+    }
+
+    .toolbar {
+      flex: 0 0 auto;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--rule);
+      background: var(--paper-2);
+    }
+
+    .tool-button {
+      min-width: 42px;
+      height: 38px;
+      border: 1px solid #cbb995;
+      border-radius: 6px;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 0 12px;
+      font-family: var(--ui-font);
+      font-size: 14px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .tool-button:hover {
+      border-color: var(--accent);
+    }
+
+    .tool-button[aria-pressed="true"] {
+      border-color: var(--accent);
+      color: #fffaf0;
+      background: var(--accent);
+    }
+
+    .status {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .status.warn {
+      color: var(--accent);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .empty-note {
+      padding: 16px 18px;
+      color: var(--nav-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(230px, 42dvh) minmax(0, 1fr);
+      }
+
+      .sidebar {
+        height: auto;
+        border-right: 0;
+      }
+
+      .playlist-head {
+        padding: 12px;
+      }
+
+      .playlist-title {
+        margin-bottom: 10px;
+        font-size: 17px;
+      }
+
+      .header {
+        padding: 16px 18px 13px;
+      }
+
+      .song-title {
+        font-size: 23px;
+      }
+
+      .lyrics {
+        padding: 28px 20px 88px;
+        font-size: 25px;
+        line-height: 1.75;
+      }
+
+      .lyrics hr {
+        margin: 26px 0;
+      }
+
+      .toolbar {
+        overflow-x: auto;
+      }
+
+      .status {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="playlist-head">
+        <h1 class="playlist-title" id="playlistTitle">Offline Lyrics</h1>
+
+        <label class="field-label" for="playlistSelect">Cached</label>
+        <select class="select" id="playlistSelect"></select>
+
+        <label class="field-label" for="searchInput">Search</label>
+        <input class="field" id="searchInput" type="search" placeholder="Song, artist, album" />
+
+        <label class="field-label" for="importInput">Import or retry</label>
+        <div class="import-row">
+          <input class="field" id="importInput" type="text" placeholder="NetEase URL or ID" />
+          <button class="tool-button" type="button" onclick="importPlaylist()">Run</button>
+        </div>
+      </div>
+      <div class="track-list" id="trackList"></div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div class="song-title" id="songTitle">Select a song</div>
+        <div class="song-meta" id="songMeta"></div>
+      </header>
+
+      <div class="lyrics empty" id="lyrics">Loading cached bundle...</div>
+
+      <div class="toolbar">
+        <button class="tool-button" type="button" title="Previous" onclick="prevSong()">Prev</button>
+        <button class="tool-button" type="button" title="Next" onclick="nextSong()">Next</button>
+        <button class="tool-button" type="button" title="Smaller text" onclick="fontDown()">A-</button>
+        <button class="tool-button" type="button" title="Larger text" onclick="fontUp()">A+</button>
+        <button class="tool-button" id="autoScrollButton" type="button" title="Auto scroll" aria-pressed="false" onclick="toggleAutoScroll()">AUTO</button>
+        <button class="tool-button" type="button" title="Refresh cache" onclick="loadCacheIndex()">Refresh</button>
+        <span class="status" id="statusText"></span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const DATA_ROOT = './data/';
+    const INDEX_URL = './data/index.json';
+    const LATEST_BUNDLE_URL = './data/bundle.json';
+    const FONT_KEY = 'offlineLyricsFontSize';
+    const SELECTED_KEY = 'offlineLyricsSelectedPlaylist';
+
+    let cacheIndex = { playlists: [] };
+    let bundle = null;
+    let currentIndex = 0;
+    let filteredIndexes = [];
+    let fontSize = Number(localStorage.getItem(FONT_KEY) || 30);
+    let autoScrollTimer = null;
+    let jobTimer = null;
+
+    const playlistTitle = document.getElementById('playlistTitle');
+    const playlistSelect = document.getElementById('playlistSelect');
+    const searchInput = document.getElementById('searchInput');
+    const importInput = document.getElementById('importInput');
+    const trackList = document.getElementById('trackList');
+    const songTitle = document.getElementById('songTitle');
+    const songMeta = document.getElementById('songMeta');
+    const lyricsBox = document.getElementById('lyrics');
+    const autoScrollButton = document.getElementById('autoScrollButton');
+    const statusText = document.getElementById('statusText');
+
+    async function fetchJson(url) {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    }
+
+    function normalizeLyricsForDisplay(text) {
+      if (!text) return '';
+      return text
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .map((line) => line.replace(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/g, '').trim())
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
+    async function loadCacheIndex() {
+      try {
+        cacheIndex = await fetchJson('/api/playlists');
+      } catch (_) {
+        try {
+          cacheIndex = await fetchJson(INDEX_URL);
+        } catch (_) {
+          cacheIndex = { playlists: [] };
+        }
+      }
+
+      renderPlaylistSelect();
+
+      const selectedId = localStorage.getItem(SELECTED_KEY) || cacheIndex.default_playlist_id;
+      const selected = cacheIndex.playlists.find((entry) => entry.id === selectedId) || cacheIndex.playlists[0];
+      if (selected) {
+        playlistSelect.value = selected.id;
+        await loadBundleEntry(selected);
+        return;
+      }
+
+      await loadLatestBundle();
+    }
+
+    function renderPlaylistSelect() {
+      playlistSelect.innerHTML = '';
+      if (!cacheIndex.playlists.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Latest bundle';
+        playlistSelect.appendChild(option);
+        return;
+      }
+
+      cacheIndex.playlists.forEach((entry) => {
+        const option = document.createElement('option');
+        option.value = entry.id;
+        option.textContent = `${entry.playlist_title} (${entry.success_count}/${entry.track_count})`;
+        playlistSelect.appendChild(option);
+      });
+    }
+
+    async function loadLatestBundle() {
+      bundle = await fetchJson(LATEST_BUNDLE_URL);
+      afterBundleLoaded();
+    }
+
+    async function loadBundleEntry(entry) {
+      localStorage.setItem(SELECTED_KEY, entry.id);
+      bundle = await fetchJson(DATA_ROOT + entry.bundle_path);
+      afterBundleLoaded();
+    }
+
+    function afterBundleLoaded() {
+      playlistTitle.textContent = bundle.playlist_title || 'Offline Lyrics';
+      lyricsBox.style.fontSize = `${fontSize}px`;
+      currentIndex = 0;
+      applyFilter();
+
+      if (bundle.items.length > 0) {
+        selectSong(0);
+      }
+    }
+
+    function applyFilter() {
+      if (!bundle) return;
+
+      const query = searchInput.value.trim().toLowerCase();
+      filteredIndexes = [];
+      bundle.items.forEach((item, index) => {
+        const haystack = [
+          item.title,
+          item.artist_text,
+          item.album,
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!query || haystack.includes(query)) {
+          filteredIndexes.push(index);
+        }
+      });
+
+      renderTrackList();
+      updateStatus();
+    }
+
+    function renderTrackList() {
+      trackList.innerHTML = '';
+
+      if (!bundle || !filteredIndexes.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-note';
+        empty.textContent = bundle ? 'No matching songs.' : 'No cached bundle loaded.';
+        trackList.appendChild(empty);
+        return;
+      }
+
+      filteredIndexes.forEach((itemIndex) => {
+        const item = bundle.items[itemIndex];
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `track${itemIndex === currentIndex ? ' active' : ''}`;
+        button.onclick = () => selectSong(itemIndex);
+
+        const title = document.createElement('div');
+        title.className = 'track-title';
+        title.textContent = item.title || 'Untitled';
+
+        const artist = document.createElement('div');
+        artist.className = 'track-artist';
+        artist.textContent = item.artist_text || item.album || '';
+
+        button.appendChild(title);
+        button.appendChild(artist);
+        trackList.appendChild(button);
+      });
+
+      const active = trackList.querySelector('.track.active');
+      if (active) {
+        active.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function renderLyricsText(text) {
+      lyricsBox.innerHTML = '';
+      const normalized = normalizeLyricsForDisplay(text);
+      lyricsBox.classList.toggle('empty', !normalized);
+      lyricsBox.style.fontSize = `${fontSize}px`;
+
+      if (!normalized) {
+        lyricsBox.textContent = 'No lyrics cached for this song.';
+        return;
+      }
+
+      const stanzas = normalized.split(/\n\s*\n/).filter(Boolean);
+      stanzas.forEach((stanza, index) => {
+        if (index > 0) {
+          lyricsBox.appendChild(document.createElement('hr'));
+        }
+        const block = document.createElement('div');
+        block.className = 'lyric-stanza';
+        block.textContent = stanza;
+        lyricsBox.appendChild(block);
+      });
+    }
+
+    function selectSong(index) {
+      if (!bundle || !bundle.items[index]) return;
+
+      currentIndex = index;
+      renderTrackList();
+
+      const item = bundle.items[index];
+      songTitle.textContent = item.title || 'Untitled';
+      songMeta.textContent = [item.artist_text, item.album].filter(Boolean).join(' - ');
+
+      renderLyricsText(item.plain_lyrics || item.synced_lyrics || '');
+      lyricsBox.scrollTop = 0;
+      updateStatus();
+    }
+
+    function visiblePosition() {
+      const index = filteredIndexes.indexOf(currentIndex);
+      return index >= 0 ? index : 0;
+    }
+
+    function prevSong() {
+      if (!bundle || !filteredIndexes.length) return;
+      const position = visiblePosition();
+      if (position > 0) selectSong(filteredIndexes[position - 1]);
+    }
+
+    function nextSong() {
+      if (!bundle || !filteredIndexes.length) return;
+      const position = visiblePosition();
+      if (position < filteredIndexes.length - 1) selectSong(filteredIndexes[position + 1]);
+    }
+
+    function fontUp() {
+      fontSize = Math.min(48, fontSize + 2);
+      saveFontSize();
+    }
+
+    function fontDown() {
+      fontSize = Math.max(16, fontSize - 2);
+      saveFontSize();
+    }
+
+    function saveFontSize() {
+      localStorage.setItem(FONT_KEY, String(fontSize));
+      lyricsBox.style.fontSize = `${fontSize}px`;
+    }
+
+    function toggleAutoScroll() {
+      if (autoScrollTimer) {
+        clearInterval(autoScrollTimer);
+        autoScrollTimer = null;
+        autoScrollButton.setAttribute('aria-pressed', 'false');
+        return;
+      }
+
+      autoScrollTimer = setInterval(() => {
+        const maxScroll = lyricsBox.scrollHeight - lyricsBox.clientHeight;
+        if (lyricsBox.scrollTop >= maxScroll) {
+          toggleAutoScroll();
+          return;
+        }
+        lyricsBox.scrollTop += 1;
+      }, 90);
+      autoScrollButton.setAttribute('aria-pressed', 'true');
+    }
+
+    function updateStatus() {
+      if (!bundle) return;
+      const current = bundle.items[currentIndex];
+      const total = bundle.items.length || 0;
+      const success = bundle.success_count || 0;
+      const missing = bundle.missing_count ?? Math.max(0, total - success);
+      statusText.textContent = `${success}/${total} cached`;
+      statusText.className = missing ? 'status warn' : 'status';
+      if (current && current.status !== 'found') {
+        statusText.textContent = `${statusText.textContent} - current missing`;
+      }
+    }
+
+    async function importPlaylist() {
+      const source = importInput.value.trim();
+      if (!source) {
+        setStatus('Enter a NetEase URL or ID.', 'warn');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || payload.message || response.statusText);
+        }
+        setStatus(payload.message || 'Import started.', 'warn');
+        pollJob();
+      } catch (error) {
+        const command = source.startsWith('http')
+          ? `python run_pipeline.py --url "${source}"`
+          : `python run_pipeline.py --playlist-id ${source}`;
+        setStatus(`Server import unavailable. Run: ${command}`, 'error');
+      }
+    }
+
+    async function pollJob() {
+      clearTimeout(jobTimer);
+      try {
+        const job = await fetchJson('/api/job');
+        if (job.status === 'running') {
+          setStatus(job.message || 'Import running...', 'warn');
+          jobTimer = setTimeout(pollJob, 2000);
+          return;
+        }
+        if (job.status === 'complete') {
+          setStatus('Import complete.', '');
+          await loadCacheIndex();
+          if (job.result && job.result.cache_key) {
+            playlistSelect.value = job.result.cache_key;
+            const selected = cacheIndex.playlists.find((entry) => entry.id === job.result.cache_key);
+            if (selected) await loadBundleEntry(selected);
+          }
+          return;
+        }
+        if (job.status === 'error') {
+          setStatus(job.message || 'Import failed.', 'error');
+        }
+      } catch (_) {
+        setStatus('Import status unavailable.', 'error');
+      }
+    }
+
+    function setStatus(message, kind) {
+      statusText.textContent = message;
+      statusText.className = kind ? `status ${kind}` : 'status';
+    }
+
+    playlistSelect.addEventListener('change', async () => {
+      const selected = cacheIndex.playlists.find((entry) => entry.id === playlistSelect.value);
+      if (selected) await loadBundleEntry(selected);
+    });
+
+    searchInput.addEventListener('input', applyFilter);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.target === searchInput || event.target === importInput) return;
+      if (event.key === 'ArrowLeft') prevSong();
+      if (event.key === 'ArrowRight') nextSong();
+    });
+
+    loadCacheIndex().catch((error) => {
+      renderLyricsText('');
+      lyricsBox.textContent = `Failed to load cached bundle: ${error.message}`;
+      lyricsBox.classList.add('empty');
+      setStatus('Bundle load failed.', 'error');
+    });
+  </script>
+</body>
+</html>

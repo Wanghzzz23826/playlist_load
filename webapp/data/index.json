@@ -1,0 +1,60 @@
+{
+  "playlists": [
+    {
+      "id": "netease_10162873307",
+      "source": "netease",
+      "source_playlist_id": "10162873307",
+      "playlist_title": "世末歌者",
+      "track_count": 20,
+      "success_count": 6,
+      "missing_count": 14,
+      "bundle_path": "playlists/netease_10162873307/bundle.json",
+      "updated_at": "2026-04-22T05:33:53.706190+00:00"
+    },
+    {
+      "id": "netease_17807176552",
+      "source": "netease",
+      "source_playlist_id": "17807176552",
+      "playlist_title": "ONEREPUBLIC·2026中国内地巡演歌单",
+      "track_count": 28,
+      "success_count": 27,
+      "missing_count": 1,
+      "bundle_path": "playlists/netease_17807176552/bundle.json",
+      "updated_at": "2026-04-20T07:27:17.318921+00:00"
+    },
+    {
+      "id": "netease_5057104001",
+      "source": "netease",
+      "source_playlist_id": "5057104001",
+      "playlist_title": "陶喆同名专辑David Tao （1997）",
+      "track_count": 14,
+      "success_count": 12,
+      "missing_count": 2,
+      "bundle_path": "playlists/netease_5057104001/bundle.json",
+      "updated_at": "2026-04-22T05:36:47.317917+00:00"
+    },
+    {
+      "id": "netease_8673212865",
+      "source": "netease",
+      "source_playlist_id": "8673212865",
+      "playlist_title": "ren zotto",
+      "track_count": 6,
+      "success_count": 4,
+      "missing_count": 2,
+      "bundle_path": "playlists/netease_8673212865/bundle.json",
+      "updated_at": "2026-04-21T10:09:17.564926+00:00"
+    },
+    {
+      "id": "netease_8873187024",
+      "source": "netease",
+      "source_playlist_id": "8873187024",
+      "playlist_title": "LA",
+      "track_count": 15,
+      "success_count": 14,
+      "missing_count": 1,
+      "bundle_path": "playlists/netease_8873187024/bundle.json",
+      "updated_at": "2026-04-20T07:32:46.793460+00:00"
+    }
+  ],
+  "default_playlist_id": "netease_8873187024"
+}
